@@ -13,7 +13,7 @@
     */
 
     /* 한 줄 요약: 프리뷰 배경색 조정용 CSS 변수(:root --preview-bg). 필요하면 이 값만 수정하세요. */
-    :root { --preview-bg: #111; /* Preview background color - change this to adjust backdrop */ }
+    :root { --preview-bg: #ffffff; /* Preview background color - change this to adjust backdrop */ }
 
     /* 페이지 레이아웃 */
     html, body {
@@ -39,7 +39,7 @@
       max-height: 900px;
       border-radius: 12px;
       box-shadow: 0 6px 30px rgba(0,0,0,.6);
-      background: #121212; /* 모델 주변 기본 배경 (안정용) */
+      background: #ffffff; /* 모델 주변 기본 배경 (안정용) */
       transition: box-shadow .18s ease;
       display: block;
     }
@@ -80,7 +80,7 @@
     style="touch-action: none;"                     <!-- 터치 제스처 충돌을 막음 -->
   >
     <!-- fallback 콘텐츠 -->
-    <div class="hint">Tap the AR button to place the product in your space</div>
+    <div class="hint">AR 버튼을 눌러서 공간에 세라젬을 배치해보세요</div>
   </model-viewer>
 
   <script>
