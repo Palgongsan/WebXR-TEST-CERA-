@@ -61,26 +61,17 @@
   </style>
 </head>
 <body>
-  <!--
-    한 줄 요약(한국어): AR 모드에서 사용자가 모델 스케일을 변경하지 못하게 고정(ar-scale="fixed"),
-    프리뷰(비-AR)에서 핀치/휠 줌을 차단(disable-zoom). 모델 파일명은 'model.glb'로 가정.
-    필요하면 model.glb 파일명만 바꿔서 사용하세요.
-  -->
   <model-viewer
-    id="mv"
-    src="model.glb"                                  <!-- 교체: 실제 모델 파일명으로 변경 -->
+    src="model.glb"
     alt="Product Preview"
-    ar                                              <!-- AR 버튼/플로우 자동 생성 -->
-    ar-modes="webxr scene-viewer quick-look"       <!-- WebXR, Android Scene Viewer, iOS Quick Look 자동 선택 -->
-    camera-controls                                 <!-- 사용자는 카메라 회전(orbit) 가능 -->
-    disable-zoom                                    <!-- 프리뷰(비-AR)에서 pinch/휠 줌 비활성화 -->
-    ar-scale="fixed"                                <!-- AR 모드에서 스케일 고정 (사용자 스케일 조작 차단) -->
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls
+    disable-zoom
+    ar-scale="fixed"
     auto-rotate
     exposure="1"
-    style="touch-action: none;"                     <!-- 터치 제스처 충돌을 막음 -->
-  >
-    <!-- fallback 콘텐츠 -->
-    <div class="hint">AR 버튼을 눌러서 공간에 세라젬을 배치해보세요</div>
+    style="touch-action: none;">
   </model-viewer>
 
   <script>
