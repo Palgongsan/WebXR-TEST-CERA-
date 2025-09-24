@@ -3,20 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Model Viewer AR - Quick</title>
+  <title>Model Viewer AR - Product Preview (AR auto-play animation)</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
   <style>
     /* PATCH NOTES:
-       - 변경 이유: AR에서 모델 스케일 고정 및 프리뷰 단계에서 사용자의 줌(휠/핀치) 차단.
-       - 영향범위: index.html 내 model-viewer 동작(프리뷰 + AR).
-       - 롤백: 아래에 적힌 두 속성(remove "disable-zoom" and "ar-scale")을 제거하거나 원본 백업을 복원하면 됩니다.
+       - Purpose: Lock AR scale, disable preview zoom, and auto-play preferred animation upon AR entry.
+       - Rollback: remove attributes `disable-zoom` and `ar-scale="fixed"`, and remove the script block at the end.
     */
+    :root { --preview-bg: #111; }
 
-    /* 한 줄 요약: 프리뷰 배경색 조정용 CSS 변수(:root --preview-bg). 필요하면 이 값만 수정하세요. */
-    :root { --preview-bg: #414141; /* Preview background color - change this to adjust backdrop */ }
-
-    /* 페이지 레이아웃 */
     html, body {
       height: 100%;
       margin: 0;
@@ -25,78 +20,50 @@
     }
 
     body {
-      /* Pretendard를 우선으로 사용하도록 변경 */
-      font-family: "Pretendard", system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--preview-bg); /* preview 배경색 적용 */
+      background: var(--preview-bg);
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      color: #e8eef8;
     }
 
-    /* model-viewer 스타일 (미리보기 카드 형태) */
     model-viewer {
-      width: 90%;
-      height: 50%;
+      width: 90vw;
+      height: 80vh;
       max-width: 1200px;
       max-height: 900px;
       border-radius: 12px;
-      box-shadow: 0 6px 30px rgb(49, 49, 49);
-      background: #ffffff; /* 모델 주변 기본 배경 (안정용) */
-      transition: box-shadow .18s ease;
+      box-shadow: 0 6px 30px rgba(0,0,0,.6);
+      background: #121212;
       display: block;
     }
 
-  /* 힌트 오버레이 스타일 (하단 중앙) */
-  #custom-hint {
-    position: fixed;
-    left: 50%;
-    bottom: 24px;                 /* 데스크탑 기본 위치 */
-    transform: translateX(-50%);
-    background: rgb(255, 255, 255);
-    color: #1a1a1a;
-    padding: 10px 14px;
-    border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    font-family: "Pretendard", system-ui, -apple-system, "Segoe UI",
-                 Roboto, "Noto Sans KR", "Helvetica Neue", Arial;
-    font-size: 14px;
-    line-height: 1;
-    z-index: 9999;
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
-    pointer-events: auto;
-    transition: opacity 260ms ease, transform 260ms ease;
-  }
-
-  /* 닫기 버튼 */
-  #custom-hint button {
-    background: transparent;
-    border: none;
-    color: #fff;
-    opacity: 0.9;
-    cursor: pointer;
-    font-size: 13px;
-    padding: 6px;
-    border-radius: 6px;
-  }
-  #custom-hint button:focus { outline: 2px solid #fff6; }
-
-
-  /* 작은 화면(핸드헬드 아주 작음) */
-  @media (max-width: 420px) {
-    #custom-hint { bottom: 100px; font-size: 12px; padding: 8px 10px; border-radius: 8px; }
-  }
-
-  /* 숨김 시 애니메이션 */
-  #custom-hint.hidden { opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }
+    .hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      background: rgba(0,0,0,0.4);
+      padding: 6px 10px;
+      border-radius: 999px;
+      pointer-events: none;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
+  <!--
+    Notes:
+    - Replace model.glb with your actual GLB filename if different.
+    - This file keeps your UI minimal and intact, and adds logic to autoplay the preferred animation
+      (CERA_V11_CylinderAction(240)_Baked) when AR session/object-placement occurs.
+  -->
   <model-viewer
     id="mv"
-    src="model.glb"
+    src="model2.glb"
     alt="Product Preview"
     ar
     ar-modes="webxr scene-viewer quick-look"
@@ -106,28 +73,73 @@
     auto-rotate
     exposure="1"
     style="touch-action: none;">
+    <div class="hint">Tap the AR button to place the product in your space</div>
   </model-viewer>
 
-  <div id="custom-hint">
-  AR버튼을 눌러서 제품을 배치해보세요
-  </div>
-
+  <!-- AR auto-play animation script: keeps existing UI and only injects behavior on AR entry -->
   <script>
-    // 간단 안내: background 색을 동적으로 바꾸고 싶으면 아래처럼 조작할 수 있습니다.
-    // 한 줄 요약(한국어): 페이지 미리보기 배경을 JS로 변경하는 예시
-    // Example: document.documentElement.style.setProperty('--preview-bg', '#223344');
+    // --- 설정: 재생할 애니메이션 이름 (사용자 제공)
+    const PREFERRED_ANIM = "CERA_V11_CylinderAction(240)_Baked";
 
-    // (선택) 모델 로딩 상태를 모니터링하여 UX 향상(로더 표시 등)을 추가할 수 있음.
-    const mv = document.querySelector('#mv');
-    mv.addEventListener('load', () => {
-      console.log('model-viewer: model loaded');
-    });
-    mv.addEventListener('error', (e) => {
-      console.error('model-viewer error:', e);
-    });
+    const mv = document.querySelector('#mv') || document.querySelector('model-viewer');
 
-    // 참고: iOS Quick Look(USDZ)에서 스케일 동작이 플랫폼 종속적일 수 있으므로
-    // iOS에서 특별히 문제가 발생하면 추가 폴백 로직을 적용해야 함.
+    if (!mv) {
+      console.warn('model-viewer element not found. Make sure <model-viewer id="mv"> exists.');
+    } else {
+      // 시도해서 재생하는 함수
+      function playPreferredAnimation() {
+        try {
+          const avail = mv.availableAnimations ?? mv.getAvailableAnimations?.();
+          if (avail && Array.isArray(avail) && !avail.includes(PREFERRED_ANIM)) {
+            console.warn('Preferred animation not found in availableAnimations:', PREFERRED_ANIM, avail);
+            // 하지만 일부 환경에서는 이름 일치없이도 작동할 수 있으므로 시도해봄
+          }
+          mv.setAttribute('animation-name', PREFERRED_ANIM);
+          // 짧은 크로스페이드를 원하면 아래 주석을 해제하고 값(ms)를 설정
+          // mv.setAttribute('animation-crossfade-duration','100');
+          mv.play();
+          console.log('Requested to play animation:', PREFERRED_ANIM);
+        } catch (err) {
+          console.error('playPreferredAnimation error:', err);
+        }
+      }
+
+      // model-viewer의 AR 상태 이벤트를 사용한 트리거
+      mv.addEventListener('ar-status', (evt) => {
+        // evt.detail.status는 버전/플랫폼에 따라 다를 수 있음
+        const status = evt?.detail?.status ?? evt?.detail ?? null;
+        console.log('ar-status event:', status, evt);
+        // session-started 또는 object-placed에서 재생 시도
+        if (status === 'session-started' || status === 'object-placed') {
+          playPreferredAnimation();
+        }
+      });
+
+      // WebXR (enter-vr) 안전망
+      mv.addEventListener('enter-vr', () => {
+        console.log('enter-vr detected — attempting to play preferred animation');
+        playPreferredAnimation();
+      });
+
+      // iOS Quick Look 버튼 탭(가능하면)
+      mv.addEventListener('quick-look-button-tapped', () => {
+        console.log('quick-look-button-tapped — best effort to play animation');
+        // iOS Quick Look에서 외부 제어가 제한적일 수 있으나 시도함
+        playPreferredAnimation();
+      });
+
+      // scene-graph-ready 시 (선택적 초기화)
+      mv.addEventListener('scene-graph-ready', () => {
+        console.log('scene-graph-ready');
+        // 필요하면 미리 애니메이션 이름 셋업 가능:
+        // mv.setAttribute('animation-name', PREFERRED_ANIM);
+      });
+
+      // 디버깅 로그: play, pause 이벤트
+      mv.addEventListener('play', (e) => console.log('model-viewer play event', e));
+      mv.addEventListener('pause', (e) => console.log('model-viewer pause event', e));
+      mv.addEventListener('error', (e) => console.error('model-viewer error', e));
+    }
   </script>
 </body>
 </html>
