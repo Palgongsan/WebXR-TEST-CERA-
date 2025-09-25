@@ -1,316 +1,595 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Model Viewer AR - Product Preview (AR auto-play animation)</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <style>
-    /* PATCH NOTES:
-       - Purpose: Lock AR scale, disable preview zoom, and auto-play preferred animation upon AR entry.
-       - Rollback: remove attributes `disable-zoom` and `ar-scale="fixed"`, and remove the script block at the end.
-    */
-    :root { --preview-bg: #111; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CERA WebAR</title>
+    
+    <!-- Three.js 라이브러리 -->
+    <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
 
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--preview-bg);
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-      color: #e8eef8;
-    }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
-    model-viewer {
-      width: 90vw;
-      height: 80vh;
-      max-width: 1200px;
-      max-height: 900px;
-      border-radius: 12px;
-      box-shadow: 0 6px 30px rgba(0,0,0,.6);
-      background: #121212;
-      display: block;
-    }
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
 
-    .hint {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.9);
-      font-size: 13px;
-      background: rgba(0,0,0,0.4);
-      padding: 6px 10px;
-      border-radius: 999px;
-      pointer-events: none;
-      user-select: none;
-    }
-  </style>
+        .ar-button {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .ar-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(255, 107, 107, 0.6);
+        }
+
+        .ar-button:active {
+            transform: translateY(0px);
+        }
+
+        .info {
+            margin-top: 25px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.5;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+            font-size: 1rem;
+        }
+
+        .controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 25px;
+            z-index: 1000;
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
 </head>
 <body>
-  <!--
-    Notes:
-    - Replace model.glb with your actual GLB filename if different.
-    - This file keeps your UI minimal and intact, and adds logic to autoplay the preferred animation
-      (CERA_V11_CylinderAction(240)_Baked) when AR session/object-placement occurs.
-  -->
-  <model-viewer
-    id="mv"
-    src="model2.glb"
-    alt="Product Preview"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    camera-controls
-    disable-zoom
-    ar-scale="fixed"
-    auto-rotate
-    exposure="1"
-    style="touch-action: none;">
-    <div class="hint">Tap the AR button to place the product in your space</div>
-  </model-viewer>
+    <div class="container">
+        <h1>CERA</h1>
+        <p class="subtitle">증강현실로 체험해보세요</p>
+        
+        <button class="ar-button" onclick="activateXR()">AR 체험 시작</button>
+        
+        <div class="loading" id="loading">
+            모델을 로딩중입니다...
+        </div>
+        
+        <div class="info">
+            <p>📱 Android 디바이스에서 Chrome 브라우저 사용 권장</p>
+            <p>🎯 평평한 바닥이나 테이블을 찾아 모델을 배치하세요</p>
+            <p>✋ 화면을 탭하여 애니메이션을 제어할 수 있습니다</p>
+        </div>
+    </div>
 
-  <!-- ===== AR-mode animation controls (붙여넣기) ===== -->
-<style>
-  /* AR 컨트롤 오버레이 (AR 모드에서 나타남) */
-  #arAnimControls {
-    position: fixed;
-    right: 18px;
-    bottom: 18px;
-    width: 240px;
-    background: rgba(6,10,14,0.95);
-    border: 1px solid rgba(255,255,255,0.06);
-    color: #e6eef8;
-    padding: 12px;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-    z-index: 9999;
-    display: none; /* 기본 숨김 */
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
-  }
-  #arAnimControls h5 { margin:0 0 8px 0; font-size:13px; color:#9fb3d9; }
-  #arAnimControls select, #arAnimControls button { width:100%; margin-top:6px; font-size:14px; }
-  #arAnimControls .row { display:flex; gap:8px; margin-top:8px; }
-  #arAnimControls .row button { flex:1; padding:8px; border-radius:8px; border:none; cursor:pointer; }
-  .btn-play { background:#1976d2; color:white; }
-  .btn-pause { background:#2b2f36; color:white; }
-  #arAnimControls small { color:#9fb3d9; display:block; margin-top:6px; font-size:12px; }
-</style>
+    <!-- AR 제어 버튼들 (AR 모드에서만 표시) -->
+    <div class="controls" id="arControls">
+        <button class="control-button" onclick="playAnimation()">애니메이션 재생</button>
+        <button class="control-button" onclick="resetModel()">모델 리셋</button>
+    </div>
 
-<div id="arAnimControls" aria-hidden="true">
-  <h5>AR Animation</h5>
-  <label for="arAnimSelect" class="sr-only">Choose animation</label>
-  <select id="arAnimSelect" aria-label="Choose animation">
-    <!-- 기본 옵션: 네가 알려준 3개 -->
-    <option value="CERA_V11_ChairMode(1)_Baked">CERA_V11_ChairMode(1)_Baked</option>
-    <option value="CERA_V11_CylinderAction(240)_Baked">CERA_V11_CylinderAction(240)_Baked</option>
-    <option value="CERA_V11_Stretch(1)_Baked">CERA_V11_Stretch(1)_Baked</option>
-  </select>
+    <script>
+        // ===========================================
+        // 🔧 주요 설정 파라미터들 (이 부분을 수정하세요)
+        // ===========================================
+        
+        const CONFIG = {
+            // 모델 파일 경로 (GLB 파일명을 여기서 수정)
+            MODEL_PATH: './CERA_V11.glb',
+            
+            // 애니메이션 이름들 (GLB 파일의 애니메이션 이름과 정확히 일치해야 함)
+            ANIMATIONS: {
+                CHAIR_MODE: 'CERA_V11_ChairMode(1)_Baked',      // 기본 자세 (1프레임)
+                CYLINDER_ACTION: 'CERA_V11_CylinderAction(240)_Baked', // 메인 애니메이션 (240프레임)
+                STRETCH: 'CERA_V11_Stretch(1)_Baked'           // 끝 자세 (1프레임)
+            },
+            
+            // 모델 크기 배율 (1.0 = 원본 크기, 0.5 = 절반 크기)
+            MODEL_SCALE: 1.0,
+            
+            // 모델의 기본 회전 (Y축 기준, 라디안 단위)
+            MODEL_ROTATION_Y: 0,
+            
+            // 애니메이션 재생 속도 (1.0 = 정상 속도, 0.5 = 절반 속도)
+            ANIMATION_SPEED: 1.0,
+            
+            // Hit-test 결과 표시용 reticle 색상
+            RETICLE_COLOR: 0x00ff00,  // 녹색 (0xff0000: 빨강, 0x0000ff: 파랑)
+            
+            // 조명 설정
+            LIGHT_INTENSITY: 0.8,    // 조명 강도 (0.0 ~ 1.0)
+            LIGHT_COLOR: 0xffffff,   // 조명 색상 (흰색)
+        };
+        
+        // ===========================================
+        // 🎮 전역 변수들
+        // ===========================================
+        let xrSession = null;
+        let xrReferenceSpace = null;
+        let xrHitTestSource = null;
+        let renderer = null;
+        let scene = null;
+        let camera = null;
+        let ceraModel = null;          // CERA 3D 모델
+        let animationMixer = null;     // 애니메이션 믹서
+        let currentAnimations = {};    // 현재 재생중인 애니메이션들
+        let currentState = 'CHAIR_MODE'; // 현재 애니메이션 상태
+        let reticle = null;            // Hit-test 결과 표시용 reticle
+        let modelPlaced = false;       // 모델이 배치되었는지 여부
+        
+        // 애니메이션 상태 관리
+        const animationStates = {
+            CHAIR_MODE: 'CHAIR_MODE',
+            CYLINDER_ACTION: 'CYLINDER_ACTION', 
+            STRETCH: 'STRETCH'
+        };
 
-  <div class="row">
-    <button id="arPlayBtn" class="btn-play" type="button">Play</button>
-    <button id="arPauseBtn" class="btn-pause" type="button">Pause</button>
-  </div>
+        // ===========================================
+        // 🚀 WebXR 세션 시작 함수
+        // ===========================================
+        async function activateXR() {
+            try {
+                // 로딩 표시
+                document.getElementById('loading').style.display = 'block';
+                
+                // WebXR 지원 확인
+                if (!navigator.xr) {
+                    alert('이 브라우저는 WebXR을 지원하지 않습니다.');
+                    return;
+                }
 
-  <small id="arCtrlInfo">Enter AR and place the object to enable playback.</small>
-</div>
+                // AR 세션 지원 확인
+                const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!supported) {
+                    alert('이 디바이스는 AR을 지원하지 않습니다.');
+                    return;
+                }
 
-<script>
-(function(){
-  const mv = document.getElementById('mv') || document.querySelector('model-viewer');
-  if (!mv) {
-    console.warn('AR animation controls: <model-viewer id="mv"> not found.');
-    return;
-  }
+                // WebGL 컨텍스트 생성
+                const canvas = document.createElement('canvas');
+                document.body.appendChild(canvas);
+                const gl = canvas.getContext('webgl', { xrCompatible: true });
 
-  // UI elements
-  const panel = document.getElementById('arAnimControls');
-  const sel = document.getElementById('arAnimSelect');
-  const playBtn = document.getElementById('arPlayBtn');
-  const pauseBtn = document.getElementById('arPauseBtn');
-  const info = document.getElementById('arCtrlInfo');
+                if (!gl) {
+                    alert('WebGL을 초기화할 수 없습니다.');
+                    return;
+                }
 
-  // 기본 동작: 선택된 애니메이션을 model-viewer에 설정하고 재생/일시정지
-  function enablePanel() {
-    panel.style.display = 'block';
-    panel.setAttribute('aria-hidden', 'false');
-  }
-  function disablePanel() {
-    panel.style.display = 'none';
-    panel.setAttribute('aria-hidden', 'true');
-  }
+                // Three.js 렌더러 설정
+                renderer = new THREE.WebGLRenderer({
+                    alpha: true,
+                    preserveDrawingBuffer: true,
+                    canvas: canvas,
+                    context: gl
+                });
+                renderer.autoClear = false;
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  function getSelectedAnim() {
-    return sel.value;
-  }
+                // 씬 생성 및 조명 설정
+                scene = new THREE.Scene();
+                
+                // 환경광 추가
+                const ambientLight = new THREE.AmbientLight(CONFIG.LIGHT_COLOR, 0.4);
+                scene.add(ambientLight);
+                
+                // 직진광 추가
+                const directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT_COLOR, CONFIG.LIGHT_INTENSITY);
+                directionalLight.position.set(5, 10, 5);
+                directionalLight.castShadow = true;
+                scene.add(directionalLight);
 
-  function applyAnimation(name) {
-    try {
-      // set animation-name attribute (model-viewer 표준 방식)
-      mv.setAttribute('animation-name', name);
-      console.log('[AR-Ctrl] set animation-name:', name);
-    } catch (e) {
-      console.warn('[AR-Ctrl] set animation-name failed:', e);
-    }
-  }
-  function playAnimation(name) {
-    applyAnimation(name);
-    try {
-      mv.play();
-      console.log('[AR-Ctrl] play requested:', name);
-      info.textContent = 'Playing: ' + (name || '(unnamed)');
-    } catch (e) {
-      console.warn('[AR-Ctrl] play() failed:', e);
-      info.textContent = 'Play failed — see console.';
-    }
-  }
-  function pauseAnimation() {
-    try {
-      mv.pause();
-      console.log('[AR-Ctrl] pause requested');
-      info.textContent = 'Paused';
-    } catch (e) {
-      console.warn('[AR-Ctrl] pause() failed:', e);
-      info.textContent = 'Pause failed — see console.';
-    }
-  }
+                // 카메라 설정
+                camera = new THREE.PerspectiveCamera();
+                camera.matrixAutoUpdate = false;
 
-  // 버튼 이벤트
-  playBtn.addEventListener('click', ()=> {
-    const name = getSelectedAnim();
-    playAnimation(name);
-  });
-  pauseBtn.addEventListener('click', ()=> pauseAnimation());
+                // CERA 모델 로드
+                await loadCeraModel();
 
-  // AR 상태에 따라 패널 보이기/숨기기
-  // model-viewer가 트리거하는 이벤트 활용 (브라우저/버전에 따라 evt.detail 내용이 조금 다를 수 있음)
-  mv.addEventListener('ar-status', (evt) => {
-    const status = evt?.detail?.status ?? evt?.detail ?? null;
-    console.log('[AR-Ctrl] ar-status', status, evt);
-    if (status === 'session-started' || status === 'object-placed') {
-      enablePanel();
-      // 만약 자동으로 선택된 애니를 재생하고 싶다면 여기에 호출
-      // playAnimation(getSelectedAnim());
-    } else {
-      disablePanel();
-    }
-  });
+                // Reticle (타겟 표시기) 생성
+                createReticle();
 
-  // WebXR 안전망 (enter-vr)
-  mv.addEventListener('enter-vr', () => {
-    console.log('[AR-Ctrl] enter-vr');
-    enablePanel();
-  });
-  // 세션 종료시 숨기기
-  mv.addEventListener('exit-vr', () => {
-    console.log('[AR-Ctrl] exit-vr');
-    disablePanel();
-  });
+                // AR 세션 시작
+                xrSession = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test']
+                });
 
-  // Quick Look(ios) 버튼 탭에 대한 best-effort
-  mv.addEventListener('quick-look-button-tapped', () => {
-    console.log('[AR-Ctrl] quick-look-button-tapped');
-    // Quick Look은 네이티브 뷰어라 제어가 제한될 수 있으니 UI만 표시해둠
-    // (실제 재생 제어가 안 될 수 있으므로 사용자에게 안내)
-    enablePanel();
-    info.textContent = 'iOS Quick Look — playback control may be limited.';
-  });
+                xrSession.updateRenderState({
+                    baseLayer: new XRWebGLLayer(xrSession, gl)
+                });
 
-  // 옵션: model-viewer가 제공하는 애니메이션 목록이 있으면 select를 갱신
-  const avail = mv.availableAnimations ?? (typeof mv.getAvailableAnimations === 'function' && mv.getAvailableAnimations());
-  if (avail && Array.isArray(avail) && avail.length > 0) {
-    // 기존 옵션 대체
-    sel.innerHTML = '';
-    avail.forEach((name, idx) => {
-      const opt = document.createElement('option');
-      opt.value = name || `anim_${idx}`;
-      opt.textContent = (name && name.length) ? name : `anim_${idx}`;
-      sel.appendChild(opt);
-    });
-    console.log('[AR-Ctrl] populated from mv.availableAnimations', avail);
-  } else {
-    // fallback: leave the hardcoded options (you provided them)
-    console.log('[AR-Ctrl] availableAnimations not present — using hardcoded list');
-  }
+                // 참조 공간 설정
+                xrReferenceSpace = await xrSession.requestReferenceSpace('local');
 
-  // UX: 만약 AR 진입 시 자동 재생을 원하면 아래 주석 해제
-  // mv.addEventListener('object-placed', () => playAnimation(getSelectedAnim()));
+                // Hit-test 소스 생성
+                const viewerSpace = await xrSession.requestReferenceSpace('viewer');
+                xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
 
-})();
-</script>
-<!-- ===== end AR-mode animation controls ===== -->
+                // 터치 이벤트 리스너 (모델 배치 및 애니메이션 제어)
+                xrSession.addEventListener('select', onSelect);
 
+                // AR 렌더링 루프 시작
+                xrSession.requestAnimationFrame(onXRFrame);
 
-  <!-- AR auto-play animation script: keeps existing UI and only injects behavior on AR entry -->
-  <script>
-    // --- 설정: 재생할 애니메이션 이름 (사용자 제공)
-    const PREFERRED_ANIM = "CERA_V11_CylinderAction(240)_Baked";
-
-    const mv = document.querySelector('#mv') || document.querySelector('model-viewer');
-
-    if (!mv) {
-      console.warn('model-viewer element not found. Make sure <model-viewer id="mv"> exists.');
-    } else {
-      // 시도해서 재생하는 함수
-      function playPreferredAnimation() {
-        try {
-          const avail = mv.availableAnimations ?? mv.getAvailableAnimations?.();
-          if (avail && Array.isArray(avail) && !avail.includes(PREFERRED_ANIM)) {
-            console.warn('Preferred animation not found in availableAnimations:', PREFERRED_ANIM, avail);
-            // 하지만 일부 환경에서는 이름 일치없이도 작동할 수 있으므로 시도해봄
-          }
-          mv.setAttribute('animation-name', PREFERRED_ANIM);
-          // 짧은 크로스페이드를 원하면 아래 주석을 해제하고 값(ms)를 설정
-          // mv.setAttribute('animation-crossfade-duration','100');
-          mv.play();
-          console.log('Requested to play animation:', PREFERRED_ANIM);
-        } catch (err) {
-          console.error('playPreferredAnimation error:', err);
+                // UI 업데이트
+                document.querySelector('.container').style.display = 'none';
+                document.getElementById('arControls').style.display = 'block';
+                
+            } catch (error) {
+                console.error('AR 세션 시작 실패:', error);
+                alert('AR 세션을 시작할 수 없습니다: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
         }
-      }
 
-      // model-viewer의 AR 상태 이벤트를 사용한 트리거
-      mv.addEventListener('ar-status', (evt) => {
-        // evt.detail.status는 버전/플랫폼에 따라 다를 수 있음
-        const status = evt?.detail?.status ?? evt?.detail ?? null;
-        console.log('ar-status event:', status, evt);
-        // session-started 또는 object-placed에서 재생 시도
-        if (status === 'session-started' || status === 'object-placed') {
-          playPreferredAnimation();
+        // ===========================================
+        // 📦 CERA 모델 로딩 함수
+        // ===========================================
+        async function loadCeraModel() {
+            return new Promise((resolve, reject) => {
+                const loader = new THREE.GLTFLoader();
+                
+                loader.load(
+                    CONFIG.MODEL_PATH,
+                    (gltf) => {
+                        ceraModel = gltf.scene;
+                        
+                        // 모델 크기 및 회전 설정
+                        ceraModel.scale.setScalar(CONFIG.MODEL_SCALE);
+                        ceraModel.rotation.y = CONFIG.MODEL_ROTATION_Y;
+                        
+                        // 그림자 설정
+                        ceraModel.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                        });
+
+                        // 애니메이션 믹서 설정
+                        if (gltf.animations && gltf.animations.length > 0) {
+                            animationMixer = new THREE.AnimationMixer(ceraModel);
+                            
+                            // 각 애니메이션을 이름으로 저장
+                            gltf.animations.forEach(clip => {
+                                const action = animationMixer.clipAction(clip);
+                                currentAnimations[clip.name] = action;
+                                console.log('로드된 애니메이션:', clip.name);
+                            });
+
+                            // 기본 애니메이션(Chair Mode) 설정 및 재생
+                            if (currentAnimations[CONFIG.ANIMATIONS.CHAIR_MODE]) {
+                                const chairAction = currentAnimations[CONFIG.ANIMATIONS.CHAIR_MODE];
+                                chairAction.setLoop(THREE.LoopOnce);
+                                chairAction.clampWhenFinished = true;
+                                chairAction.play();
+                                currentState = animationStates.CHAIR_MODE;
+                                console.log('기본 애니메이션(Chair Mode) 재생');
+                            }
+                        }
+
+                        console.log('CERA 모델 로딩 완료');
+                        resolve();
+                    },
+                    (progress) => {
+                        console.log('로딩 진행률:', (progress.loaded / progress.total * 100) + '%');
+                    },
+                    (error) => {
+                        console.error('모델 로딩 실패:', error);
+                        reject(error);
+                    }
+                );
+            });
         }
-      });
 
-      // WebXR (enter-vr) 안전망
-      mv.addEventListener('enter-vr', () => {
-        console.log('enter-vr detected — attempting to play preferred animation');
-        playPreferredAnimation();
-      });
+        // ===========================================
+        // 🎯 Reticle (타겟 표시기) 생성
+        // ===========================================
+        function createReticle() {
+            const geometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: CONFIG.RETICLE_COLOR,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            reticle = new THREE.Mesh(geometry, material);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+        }
 
-      // iOS Quick Look 버튼 탭(가능하면)
-      mv.addEventListener('quick-look-button-tapped', () => {
-        console.log('quick-look-button-tapped — best effort to play animation');
-        // iOS Quick Look에서 외부 제어가 제한적일 수 있으나 시도함
-        playPreferredAnimation();
-      });
+        // ===========================================
+        // 🎬 애니메이션 제어 함수들
+        // ===========================================
+        
+        // 애니메이션 전환 함수
+        function transitionToAnimation(targetState, reverse = false) {
+            if (!animationMixer || !currentAnimations) return;
 
-      // scene-graph-ready 시 (선택적 초기화)
-      mv.addEventListener('scene-graph-ready', () => {
-        console.log('scene-graph-ready');
-        // 필요하면 미리 애니메이션 이름 셋업 가능:
-        // mv.setAttribute('animation-name', PREFERRED_ANIM);
-      });
+            console.log(`애니메이션 전환: ${currentState} -> ${targetState} (역재생: ${reverse})`);
 
-      // 디버깅 로그: play, pause 이벤트
-      mv.addEventListener('play', (e) => console.log('model-viewer play event', e));
-      mv.addEventListener('pause', (e) => console.log('model-viewer pause event', e));
-      mv.addEventListener('error', (e) => console.error('model-viewer error', e));
-    }
-  </script>
+            // 현재 재생중인 애니메이션 중지
+            Object.values(currentAnimations).forEach(action => {
+                action.stop();
+            });
+
+            let targetAction;
+            
+            switch (targetState) {
+                case animationStates.CHAIR_MODE:
+                    targetAction = currentAnimations[CONFIG.ANIMATIONS.CHAIR_MODE];
+                    if (targetAction) {
+                        targetAction.reset();
+                        targetAction.setLoop(THREE.LoopOnce);
+                        targetAction.clampWhenFinished = true;
+                        targetAction.timeScale = CONFIG.ANIMATION_SPEED;
+                        targetAction.play();
+                    }
+                    break;
+
+                case animationStates.CYLINDER_ACTION:
+                    targetAction = currentAnimations[CONFIG.ANIMATIONS.CYLINDER_ACTION];
+                    if (targetAction) {
+                        targetAction.reset();
+                        targetAction.setLoop(THREE.LoopOnce);
+                        targetAction.clampWhenFinished = true;
+                        targetAction.timeScale = reverse ? -CONFIG.ANIMATION_SPEED : CONFIG.ANIMATION_SPEED;
+                        
+                        if (reverse) {
+                            // 역재생을 위해 끝 지점에서 시작
+                            targetAction.time = targetAction.getClip().duration;
+                        }
+                        
+                        targetAction.play();
+                        
+                        // 애니메이션 완료 후 다음 상태로 전환
+                        const mixer = animationMixer;
+                        const onAnimationComplete = () => {
+                            mixer.removeEventListener('finished', onAnimationComplete);
+                            if (reverse) {
+                                transitionToAnimation(animationStates.CHAIR_MODE);
+                            } else {
+                                transitionToAnimation(animationStates.STRETCH);
+                            }
+                        };
+                        mixer.addEventListener('finished', onAnimationComplete);
+                    }
+                    break;
+
+                case animationStates.STRETCH:
+                    targetAction = currentAnimations[CONFIG.ANIMATIONS.STRETCH];
+                    if (targetAction) {
+                        targetAction.reset();
+                        targetAction.setLoop(THREE.LoopOnce);
+                        targetAction.clampWhenFinished = true;
+                        targetAction.timeScale = CONFIG.ANIMATION_SPEED;
+                        targetAction.play();
+                    }
+                    break;
+            }
+
+            currentState = targetState;
+        }
+
+        // 애니메이션 재생 (외부에서 호출 가능)
+        function playAnimation() {
+            if (!modelPlaced) {
+                alert('먼저 모델을 배치해주세요.');
+                return;
+            }
+
+            switch (currentState) {
+                case animationStates.CHAIR_MODE:
+                    // Chair -> Cylinder -> Stretch 순서로 재생
+                    transitionToAnimation(animationStates.CYLINDER_ACTION, false);
+                    break;
+                    
+                case animationStates.STRETCH:
+                    // Stretch -> Cylinder(역재생) -> Chair 순서로 재생
+                    transitionToAnimation(animationStates.CYLINDER_ACTION, true);
+                    break;
+                    
+                case animationStates.CYLINDER_ACTION:
+                    // 이미 재생중이면 무시
+                    console.log('애니메이션이 이미 재생중입니다.');
+                    break;
+            }
+        }
+
+        // 모델 리셋 함수
+        function resetModel() {
+            if (!modelPlaced) return;
+            
+            transitionToAnimation(animationStates.CHAIR_MODE);
+            console.log('모델이 기본 상태로 리셋되었습니다.');
+        }
+
+        // ===========================================
+        // 👆 터치/선택 이벤트 처리
+        // ===========================================
+        function onSelect(event) {
+            if (!modelPlaced && reticle.visible) {
+                // 모델이 아직 배치되지 않았다면 배치
+                const reticlePosition = new THREE.Vector3();
+                reticle.getWorldPosition(reticlePosition);
+                
+                ceraModel.position.copy(reticlePosition);
+                scene.add(ceraModel);
+                
+                modelPlaced = true;
+                reticle.visible = false;
+                
+                console.log('CERA 모델이 배치되었습니다.');
+            } else if (modelPlaced) {
+                // 모델이 이미 배치되었다면 애니메이션 제어
+                playAnimation();
+            }
+        }
+
+        // ===========================================
+        // 🎨 XR 렌더링 루프
+        // ===========================================
+        function onXRFrame(time, frame) {
+            xrSession.requestAnimationFrame(onXRFrame);
+
+            const referenceSpace = xrReferenceSpace;
+            const pose = frame.getViewerPose(referenceSpace);
+
+            if (pose) {
+                const view = pose.views[0];
+                const viewport = xrSession.renderState.baseLayer.getViewport(view);
+                
+                renderer.setSize(viewport.width, viewport.height);
+
+                // 카메라 매트릭스 업데이트
+                camera.matrix.fromArray(view.transform.matrix);
+                camera.projectionMatrix.fromArray(view.projectionMatrix);
+                camera.updateMatrixWorld(true);
+
+                // Hit-test 결과 처리 (모델이 아직 배치되지 않았을 때만)
+                if (xrHitTestSource && !modelPlaced) {
+                    const hitTestResults = frame.getHitTestResults(xrHitTestSource);
+                    
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        const hitPose = hit.getPose(referenceSpace);
+                        
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hitPose.transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                }
+
+                // 애니메이션 업데이트
+                if (animationMixer) {
+                    animationMixer.update(0.016); // 약 60fps
+                }
+
+                // WebXR 프레임버퍼에 바인딩
+                const glLayer = xrSession.renderState.baseLayer;
+                renderer.getContext().bindFramebuffer(renderer.getContext().FRAMEBUFFER, glLayer.framebuffer);
+
+                // 씬 렌더링
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ===========================================
+        // 🛠️ 유틸리티 함수들
+        // ===========================================
+        
+        // 브라우저 호환성 체크
+        function checkCompatibility() {
+            if (!navigator.xr) {
+                document.querySelector('.ar-button').disabled = true;
+                document.querySelector('.ar-button').textContent = 'WebXR 미지원';
+                document.querySelector('.info').innerHTML = '<p style="color: #ff6b6b;">❌ 이 브라우저는 WebXR을 지원하지 않습니다.</p>';
+                return false;
+            }
+            return true;
+        }
+
+        // 페이지 로드 시 호환성 체크
+        window.addEventListener('load', () => {
+            checkCompatibility();
+        });
+
+        // 세션 종료 처리
+        function endXRSession() {
+            if (xrSession) {
+                xrSession.end();
+                xrSession = null;
+                
+                // UI 리셋
+                document.querySelector('.container').style.display = 'block';
+                document.getElementById('arControls').style.display = 'none';
+                
+                // 변수 초기화
+                modelPlaced = false;
+                currentState = animationStates.CHAIR_MODE;
+                
+                // Canvas 제거
+                const canvas = document.querySelector('canvas');
+                if (canvas) {
+                    canvas.remove();
+                }
+                
+                console.log('AR 세션이 종료되었습니다.');
+            }
+        }
+
+        // 페이지 언로드 시 세션 정리
+        window.addEventListener('beforeunload', endXRSession);
+        
+    </script>
 </body>
 </html>
