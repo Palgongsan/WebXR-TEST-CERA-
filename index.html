@@ -195,6 +195,95 @@
         };
 
         // ===========================================
+        // 🛠️ 유틸리티 함수들 (먼저 정의)
+        // ===========================================
+        
+        // 디버그 정보 업데이트 함수
+        function updateDebug(message) {
+            const debugElement = document.getElementById('debug');
+            if (debugElement) {
+                debugElement.textContent = '상태: ' + message;
+            }
+            console.log('DEBUG:', message);
+        }
+
+        // 세션 종료 이벤트 처리
+        function onSessionEnd(event) {
+            console.log('AR 세션이 종료되었습니다.');
+            updateDebug('AR 세션 종료됨');
+            endXRSession();
+        }
+
+        // 브라우저 호환성 체크 (개선된 버전)
+        async function checkCompatibility() {
+            const arButton = document.getElementById('arButton');
+            
+            if (!navigator.xr) {
+                arButton.disabled = true;
+                arButton.textContent = 'WebXR 미지원';
+                updateDebug('WebXR을 지원하지 않는 브라우저입니다.');
+                return false;
+            }
+            
+            try {
+                const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!supported) {
+                    arButton.disabled = true;
+                    arButton.textContent = 'AR 미지원';
+                    updateDebug('AR을 지원하지 않는 디바이스입니다.');
+                    return false;
+                }
+                
+                updateDebug('WebXR AR 지원 확인됨');
+                return true;
+            } catch (error) {
+                arButton.disabled = true;
+                arButton.textContent = '호환성 오류';
+                updateDebug('호환성 확인 실패: ' + error.message);
+                return false;
+            }
+        }
+
+        // 세션 종료 처리 (개선된 버전)
+        function endXRSession() {
+            if (xrSession) {
+                xrSession.end();
+                xrSession = null;
+                updateDebug('AR 세션 종료 중...');
+            }
+            
+            // UI 리셋
+            const arButton = document.getElementById('arButton');
+            arButton.style.display = 'block';
+            arButton.disabled = false;
+            arButton.textContent = 'AR 체험 시작';
+            
+            document.getElementById('arControls').style.display = 'none';
+            document.getElementById('debug').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+            
+            // 변수 초기화
+            modelPlaced = false;
+            currentState = animationStates.CHAIR_MODE;
+            xrReferenceSpace = null;
+            xrHitTestSource = null;
+            
+            // Canvas 제거
+            const canvas = document.querySelector('canvas');
+            if (canvas && canvas.parentNode) {
+                canvas.parentNode.removeChild(canvas);
+            }
+            
+            // 씬 정리
+            if (scene && ceraModel) {
+                scene.remove(ceraModel);
+            }
+            
+            updateDebug('AR 세션이 완전히 종료되었습니다.');
+            console.log('AR 세션 정리 완료');
+        }
+
+        // ===========================================
         // 🚀 WebXR 세션 시작 함수 (개선된 버전)
         // ===========================================
         async function activateXR() {
