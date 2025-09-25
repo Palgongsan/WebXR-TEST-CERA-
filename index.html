@@ -8,6 +8,8 @@
     <!-- Three.js 라이브러리 -->
     <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
     <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Draco 압축 지원을 위한 로더 -->
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/DRACOLoader.js"></script>
     
     <style>
         body {
@@ -143,6 +145,9 @@
         const CONFIG = {
             // 모델 파일 경로 (GLB 파일명을 여기서 수정)
             MODEL_PATH: './CERA_V11.glb',
+            
+            // Draco 디코더 경로 (CDN에서 자동으로 로드됨)
+            DRACO_DECODER_PATH: 'https://unpkg.com/three@0.126.0/examples/js/libs/draco/',
             
             // 애니메이션 이름들 (GLB 파일의 애니메이션 이름과 정확히 일치해야 함)
             ANIMATIONS: {
@@ -290,11 +295,22 @@
         }
 
         // ===========================================
-        // 📦 CERA 모델 로딩 함수
+        // 📦 CERA 모델 로딩 함수 (Draco 압축 지원)
         // ===========================================
         async function loadCeraModel() {
             return new Promise((resolve, reject) => {
+                // GLTF 로더 생성
                 const loader = new THREE.GLTFLoader();
+                
+                // Draco 로더 설정 (압축된 geometry 디코딩용)
+                const dracoLoader = new THREE.DRACOLoader();
+                dracoLoader.setDecoderPath(CONFIG.DRACO_DECODER_PATH);
+                dracoLoader.setDecoderConfig({ type: 'js' }); // JavaScript 디코더 사용
+                
+                // GLTF 로더에 Draco 로더 연결
+                loader.setDRACOLoader(dracoLoader);
+                
+                console.log('Draco 압축 모델 로딩 시작...');
                 
                 loader.load(
                     CONFIG.MODEL_PATH,
@@ -310,6 +326,11 @@
                             if (child.isMesh) {
                                 child.castShadow = true;
                                 child.receiveShadow = true;
+                                
+                                // Draco 압축 해제 확인 로그
+                                if (child.geometry.attributes.position) {
+                                    console.log('Draco 압축 해제 완료:', child.name || 'unnamed mesh');
+                                }
                             }
                         });
 
@@ -335,15 +356,30 @@
                             }
                         }
 
-                        console.log('CERA 모델 로딩 완료');
+                        // Draco 리소스 정리
+                        dracoLoader.dispose();
+                        console.log('CERA 모델 로딩 완료 (Draco 압축 해제됨)');
                         resolve();
                     },
                     (progress) => {
-                        console.log('로딩 진행률:', (progress.loaded / progress.total * 100) + '%');
+                        const percentage = Math.round((progress.loaded / progress.total) * 100);
+                        console.log('Draco 모델 로딩 진행률:', percentage + '%');
+                        
+                        // 로딩 진행률 표시 업데이트
+                        const loadingElement = document.getElementById('loading');
+                        if (loadingElement) {
+                            loadingElement.textContent = `모델을 로딩중입니다... ${percentage}%`;
+                        }
                     },
                     (error) => {
-                        console.error('모델 로딩 실패:', error);
-                        reject(error);
+                        console.error('Draco 모델 로딩 실패:', error);
+                        
+                        // Draco 디코딩 관련 에러인지 확인
+                        if (error.message && error.message.includes('draco')) {
+                            reject(new Error('Draco 압축 모델 디코딩 실패: ' + error.message));
+                        } else {
+                            reject(error);
+                        }
                     }
                 );
             });
