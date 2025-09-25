@@ -94,11 +94,15 @@
             });
             
             if (animationName) {
+                // Set both attribute and property for AR compatibility
+                modelViewer.setAttribute('animation-name', animationName);
                 modelViewer.animationName = animationName;
                 modelViewer.play();
                 // Add active class to clicked button
                 event.target.classList.add('active');
             } else {
+                modelViewer.removeAttribute('animation-name');
+                modelViewer.animationName = '';
                 modelViewer.pause();
             }
         }
@@ -112,13 +116,37 @@
             console.error('Model load failed:', event.detail);
         });
         
-        // AR 진입 시 애니메이션 상태 유지
+        // Enhanced AR animation state preservation
         modelViewer.addEventListener('ar-status', (event) => {
-            if (event.detail.status === 'session-started' && currentAnimation) {
-                setTimeout(() => {
-                    modelViewer.animationName = currentAnimation;
-                    modelViewer.play();
-                }, 100);
+            console.log('AR Status:', event.detail.status);
+            
+            if (event.detail.status === 'session-started') {
+                if (currentAnimation) {
+                    // Multiple attempts with different timings for reliability
+                    setTimeout(() => {
+                        modelViewer.setAttribute('animation-name', currentAnimation);
+                        modelViewer.animationName = currentAnimation;
+                        modelViewer.play();
+                    }, 50);
+                    
+                    setTimeout(() => {
+                        modelViewer.animationName = currentAnimation;
+                        modelViewer.play();
+                    }, 200);
+                    
+                    setTimeout(() => {
+                        modelViewer.animationName = currentAnimation;
+                        modelViewer.play();
+                    }, 500);
+                }
+            }
+        });
+        
+        // Additional event for WebXR sessions
+        modelViewer.addEventListener('camera-change', () => {
+            if (modelViewer.ar && currentAnimation) {
+                modelViewer.animationName = currentAnimation;
+                modelViewer.play();
             }
         });
     </script>
