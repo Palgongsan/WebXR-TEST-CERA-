@@ -14,69 +14,43 @@
     <style>
         body {
             margin: 0;
-            padding: 20px;
+            padding: 0;
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             color: white;
             text-align: center;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
         }
 
-        .container {
-            max-width: 400px;
-            width: 100%;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            margin-bottom: 30px;
-            opacity: 0.9;
-        }
-
         .ar-button {
-            background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
+            background: #333333;
             color: white;
-            border: none;
-            padding: 18px 40px;
+            border: 2px solid #666666;
+            padding: 20px 50px;
             font-size: 1.2rem;
             font-weight: bold;
-            border-radius: 50px;
+            border-radius: 10px;
             cursor: pointer;
-            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            transition: all 0.2s ease;
         }
 
         .ar-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 25px rgba(255, 107, 107, 0.6);
+            background: #555555;
+            border-color: #888888;
         }
 
         .ar-button:active {
-            transform: translateY(0px);
+            background: #222222;
         }
 
-        .info {
-            margin-top: 25px;
-            font-size: 0.9rem;
-            opacity: 0.8;
-            line-height: 1.5;
+        .ar-button:disabled {
+            background: #111111;
+            color: #555555;
+            cursor: not-allowed;
+            border-color: #333333;
         }
 
         .loading {
@@ -88,53 +62,77 @@
         .controls {
             display: none;
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px 25px;
-            border-radius: 25px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
             z-index: 1000;
+            border: 1px solid #333333;
         }
 
         .control-button {
-            background: rgba(255, 255, 255, 0.2);
+            background: #333333;
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 10px 20px;
+            border: 1px solid #666666;
+            padding: 12px 20px;
             margin: 0 5px;
-            border-radius: 20px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 0.9rem;
+            transition: background 0.2s ease;
         }
 
         .control-button:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: #555555;
+        }
+
+        .control-button:active {
+            background: #222222;
+        }
+
+        .debug {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1001;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>CERA</h1>
-        <p class="subtitle">증강현실로 체험해보세요</p>
-        
-        <button class="ar-button" onclick="activateXR()">AR 체험 시작</button>
-        
-        <div class="loading" id="loading">
-            모델을 로딩중입니다...
-        </div>
-        
-        <div class="info">
-            <p>📱 Android 디바이스에서 Chrome 브라우저 사용 권장</p>
-            <p>🎯 평평한 바닥이나 테이블을 찾아 모델을 배치하세요</p>
-            <p>✋ 화면을 탭하여 애니메이션을 제어할 수 있습니다</p>
-        </div>
+    <button class="ar-button" id="arButton" onclick="activateXR()">AR 체험 시작</button>
+    
+    <div class="loading" id="loading">
+        모델을 로딩중입니다...
+    </div>
+    
+    <!-- 디버그 정보 표시 -->
+    <div class="debug" id="debug">
+        상태: 대기중
     </div>
 
-    <!-- AR 제어 버튼들 (AR 모드에서만 표시) -->
+    <!-- AR 제어 버튼들 -->
     <div class="controls" id="arControls">
         <button class="control-button" onclick="playAnimation()">애니메이션 재생</button>
         <button class="control-button" onclick="resetModel()">모델 리셋</button>
+        <button class="control-button" onclick="endXRSession()">AR 종료</button>
     </div>
 
     <script>
@@ -197,34 +195,40 @@
         };
 
         // ===========================================
-        // 🚀 WebXR 세션 시작 함수
+        // 🚀 WebXR 세션 시작 함수 (개선된 버전)
         // ===========================================
         async function activateXR() {
             try {
-                // 로딩 표시
-                document.getElementById('loading').style.display = 'block';
+                // UI 상태 업데이트
+                updateDebug('WebXR 세션 시작 중...');
+                const arButton = document.getElementById('arButton');
+                const loadingElement = document.getElementById('loading');
+                
+                arButton.disabled = true;
+                arButton.textContent = '초기화 중...';
+                loadingElement.style.display = 'block';
                 
                 // WebXR 지원 확인
                 if (!navigator.xr) {
-                    alert('이 브라우저는 WebXR을 지원하지 않습니다.');
-                    return;
+                    throw new Error('이 브라우저는 WebXR을 지원하지 않습니다.');
                 }
 
+                updateDebug('AR 세션 지원 확인 중...');
+                
                 // AR 세션 지원 확인
                 const supported = await navigator.xr.isSessionSupported('immersive-ar');
                 if (!supported) {
-                    alert('이 디바이스는 AR을 지원하지 않습니다.');
-                    return;
+                    throw new Error('이 디바이스는 AR을 지원하지 않습니다.');
                 }
 
+                updateDebug('WebGL 컨텍스트 생성 중...');
+                
                 // WebGL 컨텍스트 생성
                 const canvas = document.createElement('canvas');
-                document.body.appendChild(canvas);
                 const gl = canvas.getContext('webgl', { xrCompatible: true });
 
                 if (!gl) {
-                    alert('WebGL을 초기화할 수 없습니다.');
-                    return;
+                    throw new Error('WebGL을 초기화할 수 없습니다.');
                 }
 
                 // Three.js 렌더러 설정
@@ -237,6 +241,9 @@
                 renderer.autoClear = false;
                 renderer.shadowMap.enabled = true;
                 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.xr.enabled = true;
+
+                updateDebug('씬 및 조명 설정 중...');
 
                 // 씬 생성 및 조명 설정
                 scene = new THREE.Scene();
@@ -255,16 +262,24 @@
                 camera = new THREE.PerspectiveCamera();
                 camera.matrixAutoUpdate = false;
 
+                updateDebug('CERA 모델 로딩 중...');
+
                 // CERA 모델 로드
                 await loadCeraModel();
 
+                updateDebug('Reticle 생성 중...');
+
                 // Reticle (타겟 표시기) 생성
                 createReticle();
+
+                updateDebug('AR 세션 요청 중...');
 
                 // AR 세션 시작
                 xrSession = await navigator.xr.requestSession('immersive-ar', {
                     requiredFeatures: ['hit-test']
                 });
+
+                updateDebug('XR 렌더 상태 설정 중...');
 
                 xrSession.updateRenderState({
                     baseLayer: new XRWebGLLayer(xrSession, gl)
@@ -273,24 +288,49 @@
                 // 참조 공간 설정
                 xrReferenceSpace = await xrSession.requestReferenceSpace('local');
 
+                updateDebug('Hit-test 소스 생성 중...');
+
                 // Hit-test 소스 생성
                 const viewerSpace = await xrSession.requestReferenceSpace('viewer');
                 xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
 
+                updateDebug('이벤트 리스너 등록 중...');
+
                 // 터치 이벤트 리스너 (모델 배치 및 애니메이션 제어)
                 xrSession.addEventListener('select', onSelect);
+                
+                // 세션 종료 이벤트 리스너
+                xrSession.addEventListener('end', onSessionEnd);
+
+                updateDebug('AR 렌더링 루프 시작...');
+
+                // Canvas를 body에 추가
+                document.body.appendChild(canvas);
 
                 // AR 렌더링 루프 시작
                 xrSession.requestAnimationFrame(onXRFrame);
 
                 // UI 업데이트
-                document.querySelector('.container').style.display = 'none';
+                arButton.style.display = 'none';
+                loadingElement.style.display = 'none';
                 document.getElementById('arControls').style.display = 'block';
+                document.getElementById('debug').style.display = 'block';
+                
+                updateDebug('AR 세션 시작 완료! 바닥을 찾아보세요...');
                 
             } catch (error) {
                 console.error('AR 세션 시작 실패:', error);
+                updateDebug('오류: ' + error.message);
+                
+                // UI 복구
+                const arButton = document.getElementById('arButton');
+                const loadingElement = document.getElementById('loading');
+                
+                arButton.disabled = false;
+                arButton.textContent = 'AR 체험 시작';
+                loadingElement.style.display = 'none';
+                
                 alert('AR 세션을 시작할 수 없습니다: ' + error.message);
-                document.getElementById('loading').style.display = 'none';
             }
         }
 
@@ -594,9 +634,10 @@
             return true;
         }
 
-        // 페이지 로드 시 호환성 체크
-        window.addEventListener('load', () => {
-            checkCompatibility();
+        // 페이지 로드 시 호환성 체크 (개선된 버전)
+        window.addEventListener('load', async () => {
+            updateDebug('페이지 로딩 완료, 호환성 확인 중...');
+            await checkCompatibility();
         });
 
         // 세션 종료 처리
