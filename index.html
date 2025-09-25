@@ -17,12 +17,43 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
 
         model-viewer {
             width: 100vw;
             height: 100vh;
             background-color: black;
+        }
+
+        .animation-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .animation-controls button {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: background 0.2s;
+        }
+
+        .animation-controls button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .animation-controls button.active {
+            background: rgba(255,255,255,0.3);
         }
     </style>
 </head>
@@ -37,18 +68,58 @@
         reveal="auto"
         environment-image="neutral"
         shadow-intensity="1"
-        exposure="1">
+        exposure="1"
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="auto">
     </model-viewer>
+    
+    <div class="animation-controls">
+        <button onclick="setAnimation('CERA_V11_ChairMode(1)_Baked')">Chair</button>
+        <button onclick="setAnimation('CERA_V11_CylinderAction(240)_Baked')">Cylinder</button>
+        <button onclick="setAnimation('CERA_V11_Stretch(1)_Baked')">Stretch</button>
+        <button onclick="setAnimation('')">Stop</button>
+    </div>
 
     <script>
         const modelViewer = document.querySelector('model-viewer');
+        let currentAnimation = '';
+        
+        function setAnimation(animationName) {
+            currentAnimation = animationName;
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.animation-controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (animationName) {
+                modelViewer.animationName = animationName;
+                modelViewer.play();
+                // Add active class to clicked button
+                event.target.classList.add('active');
+            } else {
+                modelViewer.pause();
+            }
+        }
         
         modelViewer.addEventListener('load', () => {
             console.log('Model loaded successfully');
+            console.log('Available animations:', modelViewer.availableAnimations);
         });
         
         modelViewer.addEventListener('error', (event) => {
             console.error('Model load failed:', event.detail);
+        });
+        
+        // AR 진입 시 애니메이션 상태 유지
+        modelViewer.addEventListener('ar-status', (event) => {
+            if (event.detail.status === 'session-started' && currentAnimation) {
+                setTimeout(() => {
+                    modelViewer.animationName = currentAnimation;
+                    modelViewer.play();
+                }, 100);
+            }
         });
     </script>
 </body>
