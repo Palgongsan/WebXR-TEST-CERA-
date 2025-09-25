@@ -76,6 +76,177 @@
     <div class="hint">Tap the AR button to place the product in your space</div>
   </model-viewer>
 
+  <!-- ===== AR-mode animation controls (붙여넣기) ===== -->
+<style>
+  /* AR 컨트롤 오버레이 (AR 모드에서 나타남) */
+  #arAnimControls {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    width: 240px;
+    background: rgba(6,10,14,0.95);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #e6eef8;
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    z-index: 9999;
+    display: none; /* 기본 숨김 */
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+  }
+  #arAnimControls h5 { margin:0 0 8px 0; font-size:13px; color:#9fb3d9; }
+  #arAnimControls select, #arAnimControls button { width:100%; margin-top:6px; font-size:14px; }
+  #arAnimControls .row { display:flex; gap:8px; margin-top:8px; }
+  #arAnimControls .row button { flex:1; padding:8px; border-radius:8px; border:none; cursor:pointer; }
+  .btn-play { background:#1976d2; color:white; }
+  .btn-pause { background:#2b2f36; color:white; }
+  #arAnimControls small { color:#9fb3d9; display:block; margin-top:6px; font-size:12px; }
+</style>
+
+<div id="arAnimControls" aria-hidden="true">
+  <h5>AR Animation</h5>
+  <label for="arAnimSelect" class="sr-only">Choose animation</label>
+  <select id="arAnimSelect" aria-label="Choose animation">
+    <!-- 기본 옵션: 네가 알려준 3개 -->
+    <option value="CERA_V11_ChairMode(1)_Baked">CERA_V11_ChairMode(1)_Baked</option>
+    <option value="CERA_V11_CylinderAction(240)_Baked">CERA_V11_CylinderAction(240)_Baked</option>
+    <option value="CERA_V11_Stretch(1)_Baked">CERA_V11_Stretch(1)_Baked</option>
+  </select>
+
+  <div class="row">
+    <button id="arPlayBtn" class="btn-play" type="button">Play</button>
+    <button id="arPauseBtn" class="btn-pause" type="button">Pause</button>
+  </div>
+
+  <small id="arCtrlInfo">Enter AR and place the object to enable playback.</small>
+</div>
+
+<script>
+(function(){
+  const mv = document.getElementById('mv') || document.querySelector('model-viewer');
+  if (!mv) {
+    console.warn('AR animation controls: <model-viewer id="mv"> not found.');
+    return;
+  }
+
+  // UI elements
+  const panel = document.getElementById('arAnimControls');
+  const sel = document.getElementById('arAnimSelect');
+  const playBtn = document.getElementById('arPlayBtn');
+  const pauseBtn = document.getElementById('arPauseBtn');
+  const info = document.getElementById('arCtrlInfo');
+
+  // 기본 동작: 선택된 애니메이션을 model-viewer에 설정하고 재생/일시정지
+  function enablePanel() {
+    panel.style.display = 'block';
+    panel.setAttribute('aria-hidden', 'false');
+  }
+  function disablePanel() {
+    panel.style.display = 'none';
+    panel.setAttribute('aria-hidden', 'true');
+  }
+
+  function getSelectedAnim() {
+    return sel.value;
+  }
+
+  function applyAnimation(name) {
+    try {
+      // set animation-name attribute (model-viewer 표준 방식)
+      mv.setAttribute('animation-name', name);
+      console.log('[AR-Ctrl] set animation-name:', name);
+    } catch (e) {
+      console.warn('[AR-Ctrl] set animation-name failed:', e);
+    }
+  }
+  function playAnimation(name) {
+    applyAnimation(name);
+    try {
+      mv.play();
+      console.log('[AR-Ctrl] play requested:', name);
+      info.textContent = 'Playing: ' + (name || '(unnamed)');
+    } catch (e) {
+      console.warn('[AR-Ctrl] play() failed:', e);
+      info.textContent = 'Play failed — see console.';
+    }
+  }
+  function pauseAnimation() {
+    try {
+      mv.pause();
+      console.log('[AR-Ctrl] pause requested');
+      info.textContent = 'Paused';
+    } catch (e) {
+      console.warn('[AR-Ctrl] pause() failed:', e);
+      info.textContent = 'Pause failed — see console.';
+    }
+  }
+
+  // 버튼 이벤트
+  playBtn.addEventListener('click', ()=> {
+    const name = getSelectedAnim();
+    playAnimation(name);
+  });
+  pauseBtn.addEventListener('click', ()=> pauseAnimation());
+
+  // AR 상태에 따라 패널 보이기/숨기기
+  // model-viewer가 트리거하는 이벤트 활용 (브라우저/버전에 따라 evt.detail 내용이 조금 다를 수 있음)
+  mv.addEventListener('ar-status', (evt) => {
+    const status = evt?.detail?.status ?? evt?.detail ?? null;
+    console.log('[AR-Ctrl] ar-status', status, evt);
+    if (status === 'session-started' || status === 'object-placed') {
+      enablePanel();
+      // 만약 자동으로 선택된 애니를 재생하고 싶다면 여기에 호출
+      // playAnimation(getSelectedAnim());
+    } else {
+      disablePanel();
+    }
+  });
+
+  // WebXR 안전망 (enter-vr)
+  mv.addEventListener('enter-vr', () => {
+    console.log('[AR-Ctrl] enter-vr');
+    enablePanel();
+  });
+  // 세션 종료시 숨기기
+  mv.addEventListener('exit-vr', () => {
+    console.log('[AR-Ctrl] exit-vr');
+    disablePanel();
+  });
+
+  // Quick Look(ios) 버튼 탭에 대한 best-effort
+  mv.addEventListener('quick-look-button-tapped', () => {
+    console.log('[AR-Ctrl] quick-look-button-tapped');
+    // Quick Look은 네이티브 뷰어라 제어가 제한될 수 있으니 UI만 표시해둠
+    // (실제 재생 제어가 안 될 수 있으므로 사용자에게 안내)
+    enablePanel();
+    info.textContent = 'iOS Quick Look — playback control may be limited.';
+  });
+
+  // 옵션: model-viewer가 제공하는 애니메이션 목록이 있으면 select를 갱신
+  const avail = mv.availableAnimations ?? (typeof mv.getAvailableAnimations === 'function' && mv.getAvailableAnimations());
+  if (avail && Array.isArray(avail) && avail.length > 0) {
+    // 기존 옵션 대체
+    sel.innerHTML = '';
+    avail.forEach((name, idx) => {
+      const opt = document.createElement('option');
+      opt.value = name || `anim_${idx}`;
+      opt.textContent = (name && name.length) ? name : `anim_${idx}`;
+      sel.appendChild(opt);
+    });
+    console.log('[AR-Ctrl] populated from mv.availableAnimations', avail);
+  } else {
+    // fallback: leave the hardcoded options (you provided them)
+    console.log('[AR-Ctrl] availableAnimations not present — using hardcoded list');
+  }
+
+  // UX: 만약 AR 진입 시 자동 재생을 원하면 아래 주석 해제
+  // mv.addEventListener('object-placed', () => playAnimation(getSelectedAnim()));
+
+})();
+</script>
+<!-- ===== end AR-mode animation controls ===== -->
+
+
   <!-- AR auto-play animation script: keeps existing UI and only injects behavior on AR entry -->
   <script>
     // --- 설정: 재생할 애니메이션 이름 (사용자 제공)
